@@ -1,10 +1,11 @@
 import hashlib
-from pathlib import Path
+
 from enum import Enum
+from pathlib import Path
 
 from src.storage.database import (
     get_document,
-    save_document
+    observe_document
 )
 
 class ChangeStatus(str, Enum):
@@ -33,17 +34,13 @@ def calculate_file_hash(file_path: str | Path) -> str:
 
     return sha256.hexdigest()
 
-
 def check_document(
     file_path: str | Path,
     input_directory: str | Path = "data/input"
-) -> ChangeStatus:
+) -> tuple[str, ChangeStatus]:
 
     file_path = Path(file_path).resolve()
-
-    input_directory = Path(
-        input_directory
-    ).resolve()
+    input_directory = Path(input_directory).resolve()
 
     relative_path = file_path.relative_to(
         input_directory
@@ -57,32 +54,24 @@ def check_document(
         file_path
     )
 
-    stored_document = get_document(
-        document_id
+    previous = get_document(document_id)
+
+    if previous is None:
+        change_status = ChangeStatus.NEW
+
+    elif previous["status"] == "deleted":
+        change_status = ChangeStatus.MODIFIED
+
+    elif previous["observed_hash"] != current_hash:
+        change_status = ChangeStatus.MODIFIED
+
+    else:
+        change_status = ChangeStatus.UNCHANGED
+
+    observe_document(
+        document_id=document_id,
+        filename=file_path.name,
+        observed_hash=current_hash
     )
 
-    if stored_document is None:
-
-        save_document(
-            document_id=document_id,
-            filename=file_path.name,
-            file_hash=current_hash,
-            status="pending"
-        )
-
-        return ChangeStatus.NEW
-
-    stored_hash = stored_document["file_hash"]
-
-    if current_hash != stored_hash:
-
-        save_document(
-            document_id=document_id,
-            filename=file_path.name,
-            file_hash=current_hash,
-            status="pending"
-        )
-
-        return ChangeStatus.MODIFIED
-
-    return ChangeStatus.UNCHANGED
+    return document_id, change_status
