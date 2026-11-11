@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Virtual environment
+.venv/
+
+# Environment variables and secrets
+.env
+.env.*
+
+# Keep example configurations
+!.env.example
+
+# Local data
+data/input/
+data/state/
+data/generated/
+
+# IDE
+.vscode/
+
+# Operating system
+.DS_Store
